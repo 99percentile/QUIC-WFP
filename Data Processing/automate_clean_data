@@ -1,6 +1,7 @@
 #!/bin/bash
 pip3 install -r requirements.txt
 cd ./Data\ Processing
+chmod 777 extract_tar_file_script
 ./extract_tar_file_script
 python3 clean_comma_errors.py
 python3 csv_to_pickle.py

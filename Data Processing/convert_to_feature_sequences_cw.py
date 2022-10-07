@@ -112,8 +112,8 @@ for directory in closeworld:
                 burst = []
                 for k, g in groupby(enumerate(data), lambda x: x[0]-x[1]):
                     le = len(list(map(itemgetter(1), g)))
-                    burst.append(le))
-                        incom = True
+                    burst.append(le)
+                
                 l.append(lengths)
                 l.append(times)
                 l.append(direction)
