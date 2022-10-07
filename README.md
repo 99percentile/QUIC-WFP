@@ -1,4 +1,6 @@
 # LSTM-Quic-Website-Fingerprinting
+run sudo apt update and sudo apt upgrade
+
 run Data\ Processing/automate_clean_data in the root directory in sudo mode
 
 First, run "extract tar file script" in the same folder as the data file in tar format.
