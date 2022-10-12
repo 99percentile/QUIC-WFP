@@ -1,11 +1,6 @@
 # LSTM-Quic-Website-Fingerprinting
-run sudo apt update and sudo apt upgrade
 
-run Data\ Processing/automate_clean_data in the root directory in sudo mode
+Run automate_clean_data with both tar files in the git root directory. This cleans, extracts the data. The data can be found in Data_Processing after the process is finished.
 
-might need to install scikit-learn separately
-sudo apt-get install python3-sklearn
+The Experiments folder contains code for the different evaluations done, as well as the models used and the auxillary functions such as read data.
 
-First, run "extract tar file script" in the same folder as the data file in tar format.
-Then run Clean comma errors.py
-Then run csvtopickle.py
