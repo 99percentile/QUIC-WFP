@@ -20,14 +20,14 @@ with open('top-1m_tranco2021.csv', encoding = 'utf-8') as f:
 
 dns_or_doh = 'location.services.mozilla.com'
 
+with open('indexmapping.data', 'rb') as f:
+    indexmapping = pickle.load(f)
+
 def separate_domains(dns, df, idx, num_pkts_in_one_file):
     first_pkts = dns['index'].to_numpy().tolist()
     front = 0
     separate = []
-    if num_pkts_in_one_file == 102:
-        num_pkts_in_one_file = 200
-    else:
-        num_pkts_in_one_file = 100
+    num_pkts_in_one_file = 200
     pad_idx = (idx-1)*num_pkts_in_one_file
     for i, j in enumerate(first_pkts[1:]):
         rows = np.arange(front, j, 1)
@@ -46,12 +46,13 @@ def get_dns(df):
     return df[df['_ws.col.Info'].str.endswith(dns_or_doh, na=False)]
 
 count = 0
-ow = ['../hp_131/ow/open-world/1-10k']
+ow = ['../hp131_ow/open-world/1-10k']
 ow.sort()
 
 for directory in ow:
     errors = []
     l = len(os.listdir(directory))
+    storage = []
     for filename in os.listdir(directory):
         dfs = []
         if filename.endswith('.pickle'):
@@ -66,15 +67,12 @@ for directory in ow:
             df['index'] = np.arange(len(df))
             idx = int(filename.split('-')[1])
             dfs.append((df, l, idx))
-            storage = []
             for df, dirsize, idx in dfs:
                 print(str(count), str(len(dfs)))
                 count += 1
                 dns = get_dns(df)
                 separate = separate_domains(dns, df, idx, dirsize)
                 src = get_src(separate)
-                if len(separate) > 200:
-                    continue
                 for inner_df, label in separate:
                     if 'QUIC' not in inner_df['_ws.col.Protocol'].tolist():
                         continue
@@ -95,20 +93,21 @@ for directory in ow:
                     
                     inner_df = inner_df[(~inner_df['ip.src'].isin(c)) & (~inner_df['ip.dst'].isin(c)) & (~inner_df['_ws.col.Info'].str.contains('mozilla', na=False))]
                     l = []
-                    l.append(label)
+                    l.append(indexmapping[label])
                     lengths = inner_df['frame.len'].tolist()
                     times = inner_df['_ws.col.Time'].tolist()
                     direction = inner_df['ip.src'].tolist()
                     direction = list(map(lambda x:-1 if x == src else 1, direction))
                     tcp = list(map(lambda x:int(np.isnan(x)),inner_df['tcp.srcport'].tolist()))
-                    tcp = list(map(lambda x:-1 if x == 0 else 1), tcp)
+                    tcp = list(map(lambda x:-1 if x == 0 else 1, tcp))
                     quic = list(map(lambda x:int(443 in x), inner_df[['udp.srcport', 'udp.dstport']].values.tolist()))
-                    quic = list(map(lambda x:-1 if x == 0 else 1), quic)
+                    quic = list(map(lambda x:-1 if x == 0 else 1, quic))
                     data = inner_df['index'].tolist()
                     burst = []
                     for k, g in groupby(enumerate(data), lambda x: x[0]-x[1]):
                         le = len(list(map(itemgetter(1), g)))
                         burst.append(le)
+                    
                     l.append(lengths)
                     l.append(times)
                     l.append(direction)
@@ -117,8 +116,9 @@ for directory in ow:
                     l.append(burst)
                     storage.append(l)
                     
-        if not os.path.exists('./openworld_data'):
-            os.makedirs('./openworld_data')
-        with open('./openworld_data/openworld.pickle', "wb") as fh:
-            pickle.dump(storage, fh)
+        
+    if not os.path.exists('./openworld_data'):
+        os.makedirs('./openworld_data')
+    with open('./openworld_data/'+ str(directory.split('/')[-1])+'.pickle', "wb") as fh:
+        pickle.dump(storage, fh)
 

@@ -1,3 +1,5 @@
+# Original Code from https://github.com/deep-fingerprinting/df
+
 from keras.models import Sequential
 from keras.layers import Conv1D, MaxPooling1D, BatchNormalization
 from keras.layers.core import Activation, Flatten, Dense, Dropout

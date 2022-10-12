@@ -1,6 +1,6 @@
 #!/bin/bash
 pip3 install -r requirements.txt
-cd ./Data\ Processing
+cd ./Data_Processing
 chmod 777 extract_tar_file_script
 ./extract_tar_file_script
 python3 clean_comma_errors.py

@@ -1,0 +1,13 @@
+{
+	"seq_len": 100,
+	"num_domains": 700,
+	"num_traces": 333,
+	"useTime": true,
+	"useLength": true,
+	"useDirection": true,
+	"useTcp": true,
+	"useQuic": true,
+	"useBurst": true,
+	"closed_world_dir": "../Data_Processing/closedworld_data/",
+	"open_world_dir": "../Data_Processing/openworld_data/"
+}

@@ -2,18 +2,18 @@
 import os
 import pandas as pd
 
-directories = ['../hp131_cw/closed-world', '../hp131_ow/open-world']
+directories = ['../hp131_cw/closed-world/', '../hp131_ow/open-world/']
 
 for world in directories:
     for directory in os.listdir(world):
-        if os.path.isdir(directory):
-            print('DIR: ', directory)
-            for filename in os.listdir(directory):
+        if os.path.isdir(world + directory):
+            print('DIR: ', world + directory)
+            for filename in os.listdir(world + directory):
                 if filename.endswith('.csv'):
                     print(filename)
                     while True:
                         try:
-                            file = directory+'/'+filename
+                            file = world+directory+'/'+filename
                             df = pd.read_csv(file, on_bad_lines='error', header=0)
                             break
                         except Exception as e:
