@@ -20,6 +20,9 @@ with open('top-1m_tranco2021.csv', encoding = 'utf-8') as f:
 
 dns_or_doh = 'location.services.mozilla.com'
 
+with open('excludedomains.data', 'rb') as f:
+    excludedomain = pickle.load(f)
+
 with open('indexmapping.data', 'rb') as f:
     indexmapping = pickle.load(f)
 
@@ -69,6 +72,8 @@ for directory in ow:
             dfs.append((df, l, idx))
             for df, dirsize, idx in dfs:
                 print(str(count), str(len(dfs)))
+                if idx in excludedomain:
+                    continue
                 count += 1
                 dns = get_dns(df)
                 separate = separate_domains(dns, df, idx, dirsize)
