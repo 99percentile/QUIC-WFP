@@ -1,1 +1,5 @@
-/Models/Trained Models
+/bin
+/source
+/pyvenv.cfg
+/Data_Processing/closedworld_data
+/Data_Processing/openworld_data
