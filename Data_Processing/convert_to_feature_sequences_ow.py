@@ -72,14 +72,12 @@ for directory in ow:
             dfs.append((df, l, idx))
             for df, dirsize, idx in dfs:
                 print(str(count), str(len(dfs)))
-                if idx in excludedomain:
-                    continue
                 count += 1
                 dns = get_dns(df)
                 separate = separate_domains(dns, df, idx, dirsize)
                 src = get_src(separate)
                 for inner_df, label in separate:
-                    if 'QUIC' not in inner_df['_ws.col.Protocol'].tolist():
+                    if 'QUIC' not in inner_df['_ws.col.Protocol'].tolist() or label in excludedomain:
                         continue
                     zero = inner_df.index[0]
                     for i in range(1, len(inner_df)):
