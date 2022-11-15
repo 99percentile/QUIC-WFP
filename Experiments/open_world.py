@@ -1,5 +1,10 @@
-from lstmqfp import lstm_qfp
-from read_data import get_data
+import os
+import numpy as np
+import pickle
+from tensorflow.keras.preprocessing import sequence
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder
+import gc
 import json
 from tensorflow.keras.callbacks import EarlyStopping
 import numpy as np
@@ -10,61 +15,86 @@ with open('config.json', 'rb') as j:
 seq_len = config['seq_len']
 num_domains = config['num_domains']
 num_traces = config['num_traces']
-useTime = config['useTime']
-useLength = config['useLength']
-useDirection = config['useDirection']
-useTcp = config['useTcp']
-useQuic = config['useQuic']
-useBurst = config['useBurst']
+useTime = True
+useLength = True
+useDirection = True
+useTcp = True
+useQuic = True
+useBurst = True
 closed_world_dir = config['closed_world_dir']
 open_world_dir = config['open_world_dir']
 
-lstm = lstm_qfp(seq_len, num_domains, useTime, useLength, useDirection, useTcp, useQuic, useBurst)
+
+# reading open-world data
+with open(open_world_dir+'1-10k.pickle', 'rb') as fh:
+    array = pickle.load(fh)
+
+num_features = sum([useTime, useLength, useDirection, useTcp, useQuic, useBurst])
+X = []
+y = []
+for i in range(len(array)):
+    idx = array[i][0]
+    t = []
+    if useLength:
+        lengths = np.array(array[i][1]).reshape((1,-1))
+        lengths = sequence.pad_sequences(lengths, maxlen=seq_len, padding='post', truncating='post')
+        lengths = np.array(lengths).reshape((1,-1))
+        t.append(lengths)
+        
+    if useTime:
+        times = np.array(array[i][2]).reshape((1,-1))
+        times = sequence.pad_sequences(times, maxlen=seq_len, padding='post', truncating='post',dtype=float)
+        times = np.array(times).reshape((1,-1))
+        t.append(times)
+        
+    if useDirection:
+        dirs = np.array(array[i][3]).reshape((1,-1))
+        dirs = sequence.pad_sequences(dirs, maxlen=seq_len, padding='post', truncating='post')
+        dirs = np.array(dirs).reshape((1,-1))
+        t.append(dirs)
+        
+    if useTcp:
+        newtcp = list(map(lambda x: -1 if x == 0 else 1, array[i][4]))
+        tcp = np.array(newtcp).reshape((1,-1))
+        tcp = sequence.pad_sequences(tcp, maxlen=seq_len, padding='post', truncating='post')
+        tcp = np.array(tcp).reshape((1,-1))
+        t.append(tcp)
     
-X_train, y_train, X_test, y_test = get_data(closed_world_dir, seq_len=seq_len, num_domains=num_domains,
-                                            num_traces = num_traces, test_size = 0.1, useLength=useLength,
-                                            useTime=useTime, useDirection=useDirection,
-                                            useTcp=useTcp, useQuic=useQuic, useBurst=useBurst)
-
-lstm.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-early_stopping = EarlyStopping(monitor='val_accuracy', patience = 10, verbose=1)
-if useBurst:
-    history= lstm.fit([X_train[:,:,:-1], X_train[:,:,-1]], y_train, validation_split=0.15, epochs=100, batch_size=32, use_multiprocessing=True, callbacks=[early_stopping], workers=20)
-else:
-    history= lstm.fit(X_train, y_train, validation_split=0.15, epochs=100, batch_size=32, use_multiprocessing=True, callbacks=[early_stopping], workers=20)
-
-print("Test Results")
-
-if useBurst:
-    test_acc = lstm.evaluate(x=[X_test[:,:,:-1],X_test[:,:,-1]], y=y_test)
-else:
-    test_acc = lstm.evaluate(X_test, y=y_test)
-
-print(test_acc, flush=True)
-
-X_open, y_open = get_data(open_world_dir, seq_len=seq_len, num_domains=num_domains,
-                                            num_traces = 1, test_size = 0.1, openworld = True, useLength=useLength,
-                                            useTime=useTime, useDirection=useDirection,
-                                            useTcp=useTcp, useQuic=useQuic, useBurst=useBurst)
-
-
-
-def get_confusion(model, X_test, y_test, threshold=0.99):
-    # varcnn
-    #proba = model.predict(x=[X_test[:,:,1], X_test[:,:,2]])
+    if useQuic:
+        newquic = list(map(lambda x: -1 if x == 0 else 1, array[i][5]))
+        quic = np.array(newquic).reshape((1,-1))
+        quic = sequence.pad_sequences(quic, maxlen=seq_len, padding='post', truncating='post')
+        quic = np.array(quic).reshape((1,-1))
+        t.append(quic)
     
-    # lstm-qfp
-    proba = model.predict([X_test[:,:,:-1],X_test[:,:,-1]])
+    if useBurst:
+        burst = np.array(array[i][6]).reshape((1,-1))
+        burst = sequence.pad_sequences(burst, maxlen=seq_len, padding='post', truncating='post')
+        burst = np.array(burst).reshape((1,-1))
+        t.append(burst)
     
-    # tcp only
-    #proba = model.predict(X_test)
+    c = np.column_stack(t)
     
-    # lstm-qfp burst
-    #proba = model.predict([X_test[:,:,:5], X_test[:,:,5:8], X_test[:,:,8:]])
-    
-    # df
-    #proba = model.predict(X_test[:,:,2])
-    
+    X.append(c)
+    y.append(idx)
+
+X = np.array(X)
+y = np.array(y)
+
+X_open, y_open = X, y
+
+del X
+del y
+
+# choosing model to use
+from tensorflow import keras
+
+lstm = keras.models.load_model('Models/all100')
+#df = keras.models.load_model('Models/df100')
+#varcnn = keras.models.load_model('Models/varcnn100')
+model = lstm
+
+def get_confusion(proba, y_test, threshold=0.99):
     arg = np.argmax(proba, axis=1)
     val = np.max(proba, axis=1)
     newarg = []
@@ -122,8 +152,6 @@ def rprecision(arg, r):
     return tpr, wpr, fpr, precision
 
 
-
-
 #Rvalues = [1,2,3,4,5,6,7,8,9,10, 20, 30, 40, 50]
 Rvalues = [20]
 precisions = []
@@ -131,39 +159,54 @@ tprs = []
 wprs = []
 fprs = []
 n = 10
-thresholds = np.linspace(0,1,200, endpoint=False)
+thresholds = list(np.linspace(0,1,200, endpoint=True))
+a = list(reversed(1-np.logspace(-3,0,100, endpoint=True)))[:57]
+thresholds.extend(a)
+a = list(reversed(1-np.logspace(-5,-3,10)))
+thresholds.extend(a)
+thresholds.sort()
+
+r = 20
+newX = []
+newy = []
+numTraces = r * num_domains
+count = 0
+for x, y in zip(X_open, y_open):
+    if y < num_domains:
+        newX.append(x)
+        newy.append(y)
+        count += 1
+        if count >= num_domains:
+            break
+
+count = 0
+for x, y in zip(X_open, y_open):
+    if y >= num_domains:
+        newX.append(x)
+        newy.append(-1)
+        count += 1
+        if count >= numTraces:
+            break
+
+newX = np.array(newX)
+newy = np.array(newy)
+
+num_features = sum([useTime,useLength,useDirection, useTcp, useQuic, useBurst])
+newX = newX.reshape((-1, num_features, seq_len))
+newX = newX.reshape((-1, num_features*seq_len)).reshape((-1, seq_len, num_features), order='F')
+
+#lstm
+proba = model.predict([newX[:,:,:-1], newX[:,:,-1]])
+
+#varcnn
+#proba = model.predict([newX[:,:,1], newX[:,:,2]])
+
+#df
+#proba = model.predict(newX[:,:,2])
 
 for threshold in thresholds:
-    for r in Rvalues:
-        newX = []
-        newy = []
-        numTraces = r * num_domains
-        count = 0
-        for x, y in zip(X_open, y_open):
-            if y < num_domains:
-                newX.append(x)
-                newy.append(y)
-                count += 1
-                if count >= num_domains:
-                    break
-        
-        count = 0
-        for x, y in zip(X_open, y_open):
-            if y >= num_domains:
-                newX.append(x)
-                newy.append(-1)
-                count += 1
-                if count >= numTraces:
-                    break
-        
-        newX = np.array(newX)
-        newy = np.array(newy)
-        
-        num_features = sum([useTime,useLength,useDirection, useTcp, useQuic, useBurst])
-        newX = newX.reshape((-1, num_features, seq_len))
-        newX = newX.reshape((-1, num_features*seq_len)).reshape((-1, seq_len, num_features), order='F')
-        
-        tpr, wpr, fpr, cal = rprecision(get_confusion(lstm, newX, newy, threshold), r)
+    for r in Rvalues:        
+        tpr, wpr, fpr, cal = rprecision(get_confusion(proba, newy, threshold), r)
         precisions.append(cal)
         tprs.append(tpr)
         wprs.append(wpr)
@@ -175,3 +218,7 @@ print('wprs=', wprs)
 print('fprs=', fprs)
 print('precisions=', precisions)
 
+np.save('Results/tprsall100.npy', tprs)
+np.save('Results/wprsall100.npy', wprs)
+np.save('Results/fprsall100.npy', fprs)
+np.save('Results/precisionsall100.npy', precisions)

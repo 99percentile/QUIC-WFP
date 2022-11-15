@@ -1,5 +1,5 @@
-from keras.layers import Dense, LSTM, Input, Concatenate, Dropout, Bidirectional
-from keras.models import Model
+from tensorflow.keras.layers import Dense, LSTM, Input, Concatenate, Dropout, Bidirectional
+from tensorflow.keras.models import Model
 
 def lstm_qfp(seq_len, num_domains, useTime, useLength, useDirection, useTcp, useQuic, useBurst):
     num_features = sum([useTime,useLength,useDirection, useTcp, useQuic])
@@ -17,7 +17,7 @@ def lstm_qfp(seq_len, num_domains, useTime, useLength, useDirection, useTcp, use
     if useBurst:
         concatted = Concatenate()([five, burst])
     else:
-        concatted = Concatenate()([five])
+        concatted = five
     
     x = Dropout(0.2, name='dropout_2')(concatted)
     x = Dense(100)(x)

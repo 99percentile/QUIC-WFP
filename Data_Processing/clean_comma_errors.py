@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+
+# There were some lines that corrupts the reading of the csv file due to encryption under the Description field. This code detects such reading error and removes parts of the description field.
 import os
 import pandas as pd
 

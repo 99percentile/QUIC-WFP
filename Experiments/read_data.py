@@ -10,16 +10,23 @@ def get_data(dir, seq_len=100, test_size = 0.1, num_domains=700, num_traces=333,
     num_features = sum([useTime, useLength, useDirection, useTcp, useQuic, useBurst])
     X = []
     y = []
-    for filename in os.listdir(dir):
+    for count, filename in enumerate(os.listdir(dir)):
+        if count >= num_traces:
+            break
         print(filename)
         if filename.endswith('pickle'):
             try:
-                with open(dir+filename, "rb") as fh:
+                with open(dir+filename, 'rb') as fh:
+                    print(dir+filename)
                     array = pickle.load(fh)
-            except:
+                    print(len(array))
+            except Exception as e:
+                print(e)
                 continue
+            print('Finish loading')
             for i in range(len(array)):
                 idx = array[i][0]
+                print(idx)
                 t = []
                 if idx not in y and len(np.unique(y)) == num_domains:
                     continue

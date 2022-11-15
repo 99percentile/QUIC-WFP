@@ -1,3 +1,5 @@
+# This code reads the csv files and converts them to pickle file for faster reading and processing.
+
 import os
 import pandas as pd
 

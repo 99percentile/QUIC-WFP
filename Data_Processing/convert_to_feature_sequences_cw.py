@@ -15,18 +15,22 @@ import math
 dns_or_doh = 'location.services.mozilla.com'
 closeworldpath = '../hp131_cw/closed-world/'
 
+# domaindict contains a dictionary for index to domain name
 domaindict = {}
 with open('top-1m_tranco2021.csv', encoding = 'utf-8') as f:
     for l in f:
         l = l.split(',')
         domaindict[int(l[0])-1] = 'www.' + l[1].strip()
 
+# excludedomains is a list of domain indices to exclude as these domains do not contain sufficient QUIC traces
 with open('excludedomains.data', 'rb') as f:
     excludedomain = pickle.load(f)
 
+# indexmapping maps the different top level domains to the same index.
 with open('indexmapping.data', 'rb') as f:
     indexmapping = pickle.load(f)
 
+# A pickle file contains 100 or 200 traces. This separates them according to the indices of their first packets.
 def separate_domains(dns, df, idx, num_pkts_in_one_file):
     # returns a list of (trace, label)
     first_pkts = dns['index'].to_numpy().tolist()
@@ -48,8 +52,10 @@ def separate_domains(dns, df, idx, num_pkts_in_one_file):
     return separate
 
 def get_src(df):
+    # returns the ip address of the source/victim
     return df[0][0]['ip.src'][0]
 
+# Returns the first DNS packets of all traces, defined by being a DNS packet containing the string 'location.services.mozilla.com'.
 def get_dns(df):
     return df[df['_ws.col.Info'].str.endswith(dns_or_doh, na=False)]
 
@@ -66,6 +72,8 @@ for directory in closeworld:
         print('DIR: ', directory, count, '/', len(os.listdir(os.getcwd())))
         count += 1
         l = len(os.listdir(closeworldpath+directory))
+        
+        # reads each pickle file into dfs
         for filename in os.listdir(closeworldpath+directory):
             if filename.endswith('.pickle'):
                 try:
@@ -78,6 +86,8 @@ for directory in closeworld:
                 df['index'] = np.arange(len(df))
                 idx = int(filename.split('-')[1])
                 dfs.append((df, l, int(directory), idx))
+        
+        
         for df, dirsize, directory, idx in dfs:
             dns = get_dns(df)
             separate = separate_domains(dns, df, idx, dirsize)
@@ -87,10 +97,13 @@ for directory in closeworld:
                 if label >= 1000 or label in excludedomain:
                     continue
                 zero = inner_df.index[0]
+                
+                # Converts the inter-arrival time such that the first packets always start at 0.
                 for i in range(1, len(inner_df)):
                     inner_df.at[zero + i, '_ws.col.Time'] -= inner_df.at[zero, '_ws.col.Time']
                 inner_df.at[zero, '_ws.col.Time'] = 0
                 
+                # Collects all IP addresses of DNS responses with the keyword 'Mozilla' into the set c to remove related packets from trace.
                 ipadd = inner_df[(inner_df['_ws.col.Protocol'].str.contains('DNS')) & (inner_df['_ws.col.Info'].str.contains('mozilla')) & (inner_df['_ws.col.Info'].str.contains('Standard query response'))]['_ws.col.Info'].tolist()
                 c = set()
                 for ip in ipadd:
@@ -100,8 +113,11 @@ for directory in closeworld:
                         if i:
                             c.add(str(i.group(0)))
                 
+                # removes the packets related to DNS response packet 'Mozilla'
                 inner_df = inner_df[(~inner_df['ip.src'].isin(c)) & (~inner_df['ip.dst'].isin(c)) & (~inner_df['_ws.col.Info'].str.contains('mozilla', na=False))]
                 l = []
+                
+                # relabel the labels of domains with different top level domains if necessary
                 l.append(indexmapping[label])
                 lengths = inner_df['frame.len'].tolist()
                 times = inner_df['_ws.col.Time'].tolist()
