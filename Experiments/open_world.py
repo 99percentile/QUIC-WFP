@@ -89,10 +89,10 @@ del y
 # choosing model to use
 from tensorflow import keras
 
-lstm = keras.models.load_model('Models/all100')
-#df = keras.models.load_model('Models/df100')
-#varcnn = keras.models.load_model('Models/varcnn100')
-model = lstm
+lstm = keras.models.load_model('Models/all'+str(num_domains))
+df = keras.models.load_model('Models/df'+str(num_domains))
+varcnn = keras.models.load_model('Models/varcnn'+str(num_domains))
+models = [[lstm, 'all'], [df, 'df'], [varcnn, 'varcnn']]
 
 def get_confusion(proba, y_test, threshold=0.99):
     arg = np.argmax(proba, axis=1)
@@ -154,10 +154,6 @@ def rprecision(arg, r):
 
 #Rvalues = [1,2,3,4,5,6,7,8,9,10, 20, 30, 40, 50]
 Rvalues = [20]
-precisions = []
-tprs = []
-wprs = []
-fprs = []
 n = 10
 thresholds = list(np.linspace(0,1,200, endpoint=True))
 a = list(reversed(1-np.logspace(-3,0,100, endpoint=True)))[:57]
@@ -195,30 +191,38 @@ num_features = sum([useTime,useLength,useDirection, useTcp, useQuic, useBurst])
 newX = newX.reshape((-1, num_features, seq_len))
 newX = newX.reshape((-1, num_features*seq_len)).reshape((-1, seq_len, num_features), order='F')
 
-#lstm
-proba = model.predict([newX[:,:,:-1], newX[:,:,-1]])
+for model, name in models:
+    print(name)
+    if name == 'all':
+        proba = model.predict([newX[:,:,:-1], newX[:,:,-1]])
+    
+    if name == 'varcnn':
+        proba = model.predict([newX[:,:,1], newX[:,:,2]])
+    
+    if name == 'df':
+        proba = model.predict(newX[:,:,2])
+    
+    precisions = []
+    tprs = []
+    wprs = []
+    fprs = []
+    
+    for threshold in thresholds:
+        for r in Rvalues:        
+            tpr, wpr, fpr, cal = rprecision(get_confusion(proba, newy, threshold), r)
+            precisions.append(cal)
+            tprs.append(tpr)
+            wprs.append(wpr)
+            fprs.append(fpr)
+    
+    
+    #print('tprs=', tprs)
+    #print('wprs=', wprs)
+    #print('fprs=', fprs)
+    #print('precisions=', precisions)
+    
+    np.save('Results/tprs' + name + str(num_domains)+ '.npy', tprs)
+    np.save('Results/wprs' + name + str(num_domains)+ '.npy', wprs)
+    np.save('Results/fprs' + name + str(num_domains)+ '.npy', fprs)
+    np.save('Results/precisions' + name + str(num_domains)+ '.npy', precisions)
 
-#varcnn
-#proba = model.predict([newX[:,:,1], newX[:,:,2]])
-
-#df
-#proba = model.predict(newX[:,:,2])
-
-for threshold in thresholds:
-    for r in Rvalues:        
-        tpr, wpr, fpr, cal = rprecision(get_confusion(proba, newy, threshold), r)
-        precisions.append(cal)
-        tprs.append(tpr)
-        wprs.append(wpr)
-        fprs.append(fpr)
-
-
-print('tprs=', tprs)
-print('wprs=', wprs)
-print('fprs=', fprs)
-print('precisions=', precisions)
-
-np.save('Results/tprsall100.npy', tprs)
-np.save('Results/wprsall100.npy', wprs)
-np.save('Results/fprsall100.npy', fprs)
-np.save('Results/precisionsall100.npy', precisions)

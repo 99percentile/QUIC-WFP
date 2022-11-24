@@ -53,3 +53,7 @@ history= varcnn.fit([X_train[:,:,1], X_train[:,:,2]], y_train, validation_split=
 test_acc = varcnn.evaluate([X_test[:,:,1], X_test[:,:,2]], y=y_test)
 print('varcnn:', test_acc)
 
+lstm.save('Models/all'+str(num_domains))
+df.save('Models/df'+str(num_domains))
+varcnn.save('Models/varcnn'+str(num_domains))
+
