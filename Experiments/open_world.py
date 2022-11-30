@@ -153,7 +153,7 @@ def rprecision(arg, r):
 
 
 #Rvalues = [1,2,3,4,5,6,7,8,9,10, 20, 30, 40, 50]
-Rvalues = [20]
+Rvalues = [10]
 n = 10
 thresholds = list(np.linspace(0,1,200, endpoint=True))
 a = list(reversed(1-np.logspace(-3,0,100, endpoint=True)))[:57]
@@ -162,27 +162,26 @@ a = list(reversed(1-np.logspace(-5,-3,10)))
 thresholds.extend(a)
 thresholds.sort()
 
-r = 20
+r = 10
 newX = []
 newy = []
-numTraces = r * num_domains
-count = 0
+numTraces = (r+1) * num_domains
+
 for x, y in zip(X_open, y_open):
+    if y in newy:
+        continue
     if y < num_domains:
         newX.append(x)
         newy.append(y)
-        count += 1
-        if count >= num_domains:
-            break
 
-count = 0
+count = []
 for x, y in zip(X_open, y_open):
-    if y >= num_domains:
+    if y in count:
+        continue
+    if y >= num_domains and y < numTraces:
         newX.append(x)
         newy.append(-1)
-        count += 1
-        if count >= numTraces:
-            break
+        count.append(y)
 
 newX = np.array(newX)
 newy = np.array(newy)
