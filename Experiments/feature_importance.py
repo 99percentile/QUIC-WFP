@@ -35,22 +35,26 @@ X_train, y_train, X_test, y_test = get_data(closed_world_dir, seq_len=seq_len, n
                                                 useTcp=useTcp, useQuic=useQuic, useBurst=useBurst)
 
 results = []
+features = [False for i in range(6)]
 
-for _ in range(10):
-    lstm = lstm_qfp(seq_len, num_domains, useTime, useLength, useDirection, useTcp, useQuic, useBurst)
+for f in range(5, 6):
+    features[f] = True
+    for _ in range(10):
+        lstm = lstm_qfp(seq_len, num_domains, features[0], features[1], features[2], features[3], features[5], features[4])
+        
+        early_stopping = EarlyStopping(monitor='val_accuracy', patience = 10, verbose=1)
+        #X_train = X_train[:,:,f]
+        #X_test = X_test[:,:,f]
+        lstm.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+        history= lstm.fit(X_train[:,:,f], y_train, validation_split=0.15, epochs=100, batch_size=32, use_multiprocessing=True, callbacks=[early_stopping], workers=20)
+        test_acc = lstm.evaluate(X_test[:,:,f], y=y_test)
+        
+        results.append(test_acc)
+        print('lstm:', test_acc)
+        lstm.save('Models/'+str(f))
     
-    early_stopping = EarlyStopping(monitor='val_accuracy', patience = 10, verbose=1)
-    
-    lstm.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-    if useBurst:
-        history= lstm.fit([X_train[:,:,:-1], X_train[:,:,-1]], y_train, validation_split=0.15, epochs=100, batch_size=32, use_multiprocessing=True, callbacks=[early_stopping], workers=20)
-    else:
-        history= lstm.fit(X_train, y_train, validation_split=0.15, epochs=100, batch_size=32, use_multiprocessing=True, callbacks=[early_stopping], workers=20)
-    
-    if useBurst:
-        test_acc = lstm.evaluate(x=[X_test[:,:,:-1],X_test[:,:,-1]], y=y_test)
-    else:
-        test_acc = model.evaluate(X_test, y=y_test)
-    
-    results.append(test_acc)
-    print('lstm:', test_acc)
+    features[f] = False
+
+
+print(results, flush=True)
+

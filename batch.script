@@ -1,0 +1,9 @@
+#!/bin/bash
+#SBATCH --job-name=feature
+#SBATCH --gpus-per-node=1
+#SBATCH --partition=long
+#SBATCH --time=3-00
+#SBATCH --nodelist=xgpd6
+
+cd Experiments
+srun python3 compare_models.py

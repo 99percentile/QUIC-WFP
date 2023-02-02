@@ -10,7 +10,9 @@ def get_data(dir, seq_len=100, test_size = 0.1, num_domains=700, num_traces=333,
     num_features = sum([useTime, useLength, useDirection, useTcp, useQuic, useBurst])
     X = []
     y = []
-    for count, filename in enumerate(os.listdir(dir)):
+    d = os.listdir(dir)
+    d.sort()
+    for count, filename in enumerate(d):
         if count >= num_traces:
             break
         print(filename)
@@ -23,10 +25,10 @@ def get_data(dir, seq_len=100, test_size = 0.1, num_domains=700, num_traces=333,
             except Exception as e:
                 print(e)
                 continue
-            print('Finish loading')
+            #print('Finish loading')
             for i in range(len(array)):
                 idx = array[i][0]
-                print(idx)
+                #print(idx)
                 t = []
                 if idx not in y and len(np.unique(y)) == num_domains:
                     continue
@@ -49,17 +51,17 @@ def get_data(dir, seq_len=100, test_size = 0.1, num_domains=700, num_traces=333,
                     t.append(dirs)
                     
                 if useTcp:
-                    newtcp = list(map(lambda x: -1 if x == 0 else 1, array[i][4]))
-                    tcp = np.array(newtcp).reshape((1,-1))
+                    tcp = np.array(array[i][4]).reshape((1,-1))
                     tcp = sequence.pad_sequences(tcp, maxlen=seq_len, padding='post', truncating='post')
                     tcp = np.array(tcp).reshape((1,-1))
                     t.append(tcp)
                 
                 if useQuic:
-                    newquic = list(map(lambda x: -1 if x == 0 else 1, array[i][5]))
-                    quic = np.array(newquic).reshape((1,-1))
+                    quic = np.array(array[i][5]).reshape((1,-1))
                     quic = sequence.pad_sequences(quic, maxlen=seq_len, padding='post', truncating='post')
                     quic = np.array(quic).reshape((1,-1))
+                    if np.sum(quic) < 1:
+                        continue
                     t.append(quic)
                 
                 if useBurst:
@@ -81,8 +83,20 @@ def get_data(dir, seq_len=100, test_size = 0.1, num_domains=700, num_traces=333,
     
     X = X.reshape((-1, num_features, seq_len))
     
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, stratify=y)
+    a, b = np.unique(y, return_counts=True)
+    a = a.tolist()
+    b = b.tolist()
+    newX = []
+    newy = []
+    for smallx, smally in zip(X, y):
+        if b[a.index(smally)] < 10:
+            continue
+        newX.append(smallx)
+        newy.append(smally)
     
+    newy = np.array(newy)
+    newX = np.array(newX)
+    X_train, X_test, y_train, y_test = train_test_split(newX, newy, test_size=test_size, stratify=newy)
     y_train = y_train.reshape((-1, 1))
     y_test = y_test.reshape((-1,1))
     
@@ -99,5 +113,4 @@ def get_data(dir, seq_len=100, test_size = 0.1, num_domains=700, num_traces=333,
     y_test = enc.transform(y_test)
     
     return X_train, y_train, X_test, y_test
-
 

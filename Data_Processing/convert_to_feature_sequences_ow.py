@@ -79,10 +79,6 @@ for directory in ow:
                 for inner_df, label in separate:
                     if 'QUIC' not in inner_df['_ws.col.Protocol'].tolist() or label in excludedomain:
                         continue
-                    zero = inner_df.index[0]
-                    for i in range(1, len(inner_df)):
-                        inner_df.at[zero + i, '_ws.col.Time'] -= inner_df.at[zero, '_ws.col.Time']
-                    inner_df.at[zero, '_ws.col.Time'] = 0
                     
                     ipadd = inner_df[(inner_df['_ws.col.Protocol'].str.contains('DNS')) & (inner_df['_ws.col.Info'].str.contains('mozilla')) & (inner_df['_ws.col.Info'].str.contains('Standard query response'))]['_ws.col.Info'].tolist()
                     c = set()
@@ -95,6 +91,27 @@ for directory in ow:
                                 c.add(str(i.group(0)))
                     
                     inner_df = inner_df[(~inner_df['ip.src'].isin(c)) & (~inner_df['ip.dst'].isin(c)) & (~inner_df['_ws.col.Info'].str.contains('mozilla', na=False))]
+                    # removes the packets related to DNS response packet 'Mozilla'
+                    inner_df = inner_df[(~inner_df['ip.src'].isin(c)) & (~inner_df['ip.dst'].isin(c)) & (~inner_df['_ws.col.Info'].str.contains('mozilla', na=False))]
+                    l = []
+                    
+                    # filter out packets before first QUIC packet
+                    '''
+                    quic = list(map(lambda x:int(443 in x), inner_df[['udp.srcport', 'udp.dstport']].values.tolist()))
+                    try:
+                        first = quic.index(1)
+                    except ValueError:
+                        continue
+                    inner_df = inner_df.iloc[first:]
+                    '''
+                    # quic only packets
+                    inner_df = inner_df[(inner_df['udp.srcport'] == 443) | (inner_df['udp.dstport']==443)]
+                    
+                    zero = inner_df.index[0]
+                    for i in range(1, len(inner_df)):
+                        inner_df.at[zero + i, '_ws.col.Time'] -= inner_df.at[zero, '_ws.col.Time']
+                    inner_df.at[zero, '_ws.col.Time'] = 0
+                    
                     l = []
                     l.append(indexmapping[label])
                     lengths = inner_df['frame.len'].tolist()
@@ -105,11 +122,7 @@ for directory in ow:
                     tcp = list(map(lambda x:-1 if x == 0 else 1, tcp))
                     quic = list(map(lambda x:int(443 in x), inner_df[['udp.srcport', 'udp.dstport']].values.tolist()))
                     quic = list(map(lambda x:-1 if x == 0 else 1, quic))
-                    data = inner_df['index'].tolist()
-                    burst = []
-                    for k, g in groupby(enumerate(data), lambda x: x[0]-x[1]):
-                        le = len(list(map(itemgetter(1), g)))
-                        burst.append(le)
+                    burst = [sum(1 for _ in group) for _, group in groupby(direction)]
                     
                     l.append(lengths)
                     l.append(times)
@@ -120,8 +133,8 @@ for directory in ow:
                     storage.append(l)
                     
         
-    if not os.path.exists('./openworld_data'):
-        os.makedirs('./openworld_data')
-    with open('./openworld_data/'+ str(directory.split('/')[-1])+'.pickle', "wb") as fh:
+    if not os.path.exists('./openworld2_data'):
+        os.makedirs('./openworld2_data')
+    with open('./openworld2_data/'+ str(directory.split('/')[-1])+'.pickle', "wb") as fh:
         pickle.dump(storage, fh)
 

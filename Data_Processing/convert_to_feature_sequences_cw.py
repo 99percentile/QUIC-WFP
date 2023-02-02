@@ -96,12 +96,7 @@ for directory in closeworld:
                 print('label', label)
                 if label >= 1000 or label in excludedomain:
                     continue
-                zero = inner_df.index[0]
                 
-                # Converts the inter-arrival time such that the first packets always start at 0.
-                for i in range(1, len(inner_df)):
-                    inner_df.at[zero + i, '_ws.col.Time'] -= inner_df.at[zero, '_ws.col.Time']
-                inner_df.at[zero, '_ws.col.Time'] = 0
                 
                 # Collects all IP addresses of DNS responses with the keyword 'Mozilla' into the set c to remove related packets from trace.
                 ipadd = inner_df[(inner_df['_ws.col.Protocol'].str.contains('DNS')) & (inner_df['_ws.col.Info'].str.contains('mozilla')) & (inner_df['_ws.col.Info'].str.contains('Standard query response'))]['_ws.col.Info'].tolist()
@@ -117,6 +112,25 @@ for directory in closeworld:
                 inner_df = inner_df[(~inner_df['ip.src'].isin(c)) & (~inner_df['ip.dst'].isin(c)) & (~inner_df['_ws.col.Info'].str.contains('mozilla', na=False))]
                 l = []
                 
+                # filter out packets before first QUIC packet
+                
+                quic = list(map(lambda x:int(443 in x), inner_df[['udp.srcport', 'udp.dstport']].values.tolist()))
+                try:
+                    first = quic.index(1)
+                except ValueError:
+                    continue
+                inner_df = inner_df.iloc[first:]
+                
+                
+                # quic only packets
+                #inner_df = inner_df[(inner_df['udp.srcport'] == 443) | (inner_df['udp.dstport']==443)]
+                
+                # Converts the inter-arrival time such that the first packets always start at 0.
+                zero = inner_df.index[0]
+                for i in range(1, len(inner_df)):
+                    inner_df.at[zero + i, '_ws.col.Time'] -= inner_df.at[zero, '_ws.col.Time']
+                inner_df.at[zero, '_ws.col.Time'] = 0
+                
                 # relabel the labels of domains with different top level domains if necessary
                 l.append(indexmapping[label])
                 lengths = inner_df['frame.len'].tolist()
@@ -127,11 +141,7 @@ for directory in closeworld:
                 tcp = list(map(lambda x:-1 if x == 0 else 1, tcp))
                 quic = list(map(lambda x:int(443 in x), inner_df[['udp.srcport', 'udp.dstport']].values.tolist()))
                 quic = list(map(lambda x:-1 if x == 0 else 1, quic))
-                data = inner_df['index'].tolist()
-                burst = []
-                for k, g in groupby(enumerate(data), lambda x: x[0]-x[1]):
-                    le = len(list(map(itemgetter(1), g)))
-                    burst.append(le)
+                burst = [sum(1 for _ in group) for _, group in groupby(direction)]
                 
                 l.append(lengths)
                 l.append(times)
@@ -141,8 +151,8 @@ for directory in closeworld:
                 l.append(burst)
                 storage.append(l)
         
-    if not os.path.exists('./closedworld_data'):
-        os.makedirs('./closedworld_data')
-    with open('./closedworld_data/'+ str(directory)+'.pickle', "wb") as fh:
+    if not os.path.exists('./model1_data'):
+        os.makedirs('./model1_data')
+    with open('./model1_data/'+ str(directory)+'.pickle', "wb") as fh:
         pickle.dump(storage, fh)
 

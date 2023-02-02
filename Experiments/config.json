@@ -1,6 +1,6 @@
 {
 	"seq_len": 100,
-	"num_domains": 700,
+	"num_domains": 694,
 	"num_traces": 333,
 	"useTime": true,
 	"useLength": true,

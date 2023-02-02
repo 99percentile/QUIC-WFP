@@ -15,12 +15,12 @@ with open('config.json', 'rb') as j:
 seq_len = config['seq_len']
 num_domains = config['num_domains']
 num_traces = config['num_traces']
-useTime = config['useTime']
-useLength = config['useLength']
-useDirection = config['useDirection']
-useTcp = config['useTcp']
-useQuic = config['useQuic']
-useBurst = config['useBurst']
+useTime = True
+useLength = True
+useDirection = True
+useTcp = True
+useQuic = True
+useBurst = True
 closed_world_dir = config['closed_world_dir']
 open_world_dir = config['open_world_dir']
 
@@ -89,10 +89,9 @@ del y
 # choosing model to use
 from tensorflow import keras
 
-lstm = keras.models.load_model('Models/allmodel1')
-df = keras.models.load_model('Models/dfmodel1')
-varcnn = keras.models.load_model('Models/varcnnmodel1')
-models = [[lstm, 'all'], [df, 'df'], [varcnn, 'varcnn']]
+models = []
+for i in range(6):
+    models.append(keras.models.load_model('Models/'+str(i)))
 
 def get_confusion(proba, y_test, threshold=0.99):
     arg = np.argmax(proba, axis=1)
@@ -190,24 +189,15 @@ num_features = sum([useTime,useLength,useDirection, useTcp, useQuic, useBurst])
 newX = newX.reshape((-1, num_features, seq_len))
 newX = newX.reshape((-1, num_features*seq_len)).reshape((-1, seq_len, num_features), order='F')
 
-for model, name in models:
-    print(name)
-    if name == 'all':
-        proba = model.predict([newX[:,:,:-1], newX[:,:,-1]])
-    
-    if name == 'varcnn':
-        proba = model.predict([newX[:,:,1], newX[:,:,2]])
-    
-    if name == 'df':
-        proba = model.predict(newX[:,:,2])
-    
+for i in range(6):
+    proba = models[i].predict(newX[:,:,i])
     precisions = []
     tprs = []
     wprs = []
     fprs = []
     
     for threshold in thresholds:
-        for r in Rvalues:
+        for r in Rvalues:        
             tpr, wpr, fpr, cal = rprecision(get_confusion(proba, newy, threshold), r)
             precisions.append(cal)
             tprs.append(tpr)
@@ -220,8 +210,8 @@ for model, name in models:
     #print('fprs=', fprs)
     #print('precisions=', precisions)
     
-    np.save('Results/tprsopenmodel1'+name+'.npy', tprs)
-    np.save('Results/wprsopenmodel1'+name+'.npy', wprs)
-    np.save('Results/fprsopenmodel1'+name+'.npy', fprs)
-    np.save('Results/precisionsopenmodel1'+name+'.npy', precisions)
+    np.save('Results/tprs' + str(i)+ '.npy', tprs)
+    np.save('Results/wprs' + str(i)+ '.npy', wprs)
+    np.save('Results/fprs' + str(i)+ '.npy', fprs)
+    np.save('Results/precisions' + str(i)+ '.npy', precisions)
 
