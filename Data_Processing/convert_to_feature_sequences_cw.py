@@ -113,22 +113,28 @@ for directory in closeworld:
                 l = []
                 
                 # filter out packets before first QUIC packet
-                
+                '''
                 quic = list(map(lambda x:int(443 in x), inner_df[['udp.srcport', 'udp.dstport']].values.tolist()))
                 try:
                     first = quic.index(1)
                 except ValueError:
                     continue
                 inner_df = inner_df.iloc[first:]
-                
+                '''
                 
                 # quic only packets
-                #inner_df = inner_df[(inner_df['udp.srcport'] == 443) | (inner_df['udp.dstport']==443)]
+                inner_df = inner_df[(inner_df['udp.srcport'] == 443) | (inner_df['udp.dstport']==443)]
+                
+                if inner_df.empty:
+                    continue
                 
                 # Converts the inter-arrival time such that the first packets always start at 0.
+                inner_df['index'] = np.arange(len(inner_df))
                 zero = inner_df.index[0]
-                for i in range(1, len(inner_df)):
-                    inner_df.at[zero + i, '_ws.col.Time'] -= inner_df.at[zero, '_ws.col.Time']
+                for i, idx in inner_df.iterrows():
+                    if i == zero:
+                        continue
+                    inner_df.at[i, '_ws.col.Time'] -= inner_df.at[zero, '_ws.col.Time']
                 inner_df.at[zero, '_ws.col.Time'] = 0
                 
                 # relabel the labels of domains with different top level domains if necessary
@@ -151,8 +157,8 @@ for directory in closeworld:
                 l.append(burst)
                 storage.append(l)
         
-    if not os.path.exists('./model1_data'):
-        os.makedirs('./model1_data')
-    with open('./model1_data/'+ str(directory)+'.pickle', "wb") as fh:
+    if not os.path.exists('./model2_data'):
+        os.makedirs('./model2_data')
+    with open('./model2_data/'+ str(directory)+'.pickle', "wb") as fh:
         pickle.dump(storage, fh)
 

@@ -32,33 +32,35 @@ def get_data(dir, seq_len=100, test_size = 0.1, num_domains=700, num_traces=333,
                 t = []
                 if idx not in y and len(np.unique(y)) == num_domains:
                     continue
-                if useLength:
+               if len(array[i][1]) == 0:
+                    continue
+               if useLength:
                     lengths = np.array(array[i][1]).reshape((1,-1))
-                    lengths = sequence.pad_sequences(lengths, maxlen=seq_len, padding='post', truncating='post')
+                    lengths = sequence.pad_sequences(lengths, maxlen=seq_len, padding='pre', truncating='pre')
                     lengths = np.array(lengths).reshape((1,-1))
                     t.append(lengths)
                     
                 if useTime:
                     times = np.array(array[i][2]).reshape((1,-1))
-                    times = sequence.pad_sequences(times, maxlen=seq_len, padding='post', truncating='post',dtype=float)
+                    times = sequence.pad_sequences(times, maxlen=seq_len, padding='pre', truncating='pre',dtype=float)
                     times = np.array(times).reshape((1,-1))
                     t.append(times)
                     
                 if useDirection:
                     dirs = np.array(array[i][3]).reshape((1,-1))
-                    dirs = sequence.pad_sequences(dirs, maxlen=seq_len, padding='post', truncating='post')
+                    dirs = sequence.pad_sequences(dirs, maxlen=seq_len, padding='pre', truncating='pre')
                     dirs = np.array(dirs).reshape((1,-1))
                     t.append(dirs)
                     
                 if useTcp:
                     tcp = np.array(array[i][4]).reshape((1,-1))
-                    tcp = sequence.pad_sequences(tcp, maxlen=seq_len, padding='post', truncating='post')
+                    tcp = sequence.pad_sequences(tcp, maxlen=seq_len, padding='pre', truncating='pre')
                     tcp = np.array(tcp).reshape((1,-1))
                     t.append(tcp)
                 
                 if useQuic:
                     quic = np.array(array[i][5]).reshape((1,-1))
-                    quic = sequence.pad_sequences(quic, maxlen=seq_len, padding='post', truncating='post')
+                    quic = sequence.pad_sequences(quic, maxlen=seq_len, padding='pre', truncating='pre')
                     quic = np.array(quic).reshape((1,-1))
                     if np.sum(quic) < 1:
                         continue
@@ -66,7 +68,7 @@ def get_data(dir, seq_len=100, test_size = 0.1, num_domains=700, num_traces=333,
                 
                 if useBurst:
                     burst = np.array(array[i][6]).reshape((1,-1))
-                    burst = sequence.pad_sequences(burst, maxlen=seq_len, padding='post', truncating='post')
+                    burst = sequence.pad_sequences(burst, maxlen=seq_len, padding='pre', truncating='pre')
                     burst = np.array(burst).reshape((1,-1))
                     t.append(burst)
                 
