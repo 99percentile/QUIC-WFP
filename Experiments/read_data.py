@@ -62,8 +62,6 @@ def get_data(dir, seq_len=100, test_size = 0.1, num_domains=700, num_traces=333,
                     quic = np.array(array[i][5]).reshape((1,-1))
                     quic = sequence.pad_sequences(quic, maxlen=seq_len, padding='pre', truncating='pre')
                     quic = np.array(quic).reshape((1,-1))
-                    if np.sum(quic) < 1:
-                        continue
                     t.append(quic)
                 
                 if useBurst:
@@ -98,7 +96,7 @@ def get_data(dir, seq_len=100, test_size = 0.1, num_domains=700, num_traces=333,
     
     newy = np.array(newy)
     newX = np.array(newX)
-    X_train, X_test, y_train, y_test = train_test_split(newX, newy, test_size=test_size, stratify=newy)
+    X_train, X_test, y_train, y_test = train_test_split(newX, newy, test_size=test_size, stratify=newy, random_state=42)
     y_train = y_train.reshape((-1, 1))
     y_test = y_test.reshape((-1,1))
     
