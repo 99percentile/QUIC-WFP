@@ -18,6 +18,7 @@ useTcp = config['useTcp']
 useQuic = config['useQuic']
 useBurst = config['useBurst']
 closed_world_dir = config['closed_world_dir']
+modelname = config['modelname']
 
 X_train, y_train, X_test, y_test = get_data(closed_world_dir, seq_len=seq_len, num_domains=num_domains,
                                                 num_traces = num_traces, test_size = 0.1, useLength=useLength,
@@ -58,7 +59,7 @@ print('varcnn:', varcnn_test_acc)
 print('num_domains='+str(num_domains))
 print('num_features='+str(useTime)+str(useLength)+str(useDirection)+str(useTcp)+str(useQuic)+str(useBurst))
 
-lstm.save('Models/allmodel1')
-df.save('Models/dfmodel1')
-varcnn.save('Models/varcnnmodel1')
+lstm.save('Models/all'+modelname)
+df.save('Models/df'+modelname)
+varcnn.save('Models/varcnn'+modelname)
 

@@ -6,6 +6,13 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 import gc
 
+def pad_and_truncate(seq, maxlen):
+    l = len(seq)
+    if l > maxlen:
+        seq = seq[:maxlen]
+    pad = maxlen-len(seq)
+    return np.append(np.zeros(pad), seq).reshape((1, -1))
+
 def get_data(dir, seq_len=100, test_size = 0.1, num_domains=700, num_traces=333, openworld=False, useLength=True, useTime=True, useDirection=True, useTcp=True, useQuic=True, useBurst=True):
     num_features = sum([useTime, useLength, useDirection, useTcp, useQuic, useBurst])
     X = []
@@ -32,42 +39,38 @@ def get_data(dir, seq_len=100, test_size = 0.1, num_domains=700, num_traces=333,
                 t = []
                 if idx not in y and len(np.unique(y)) == num_domains:
                     continue
-               if len(array[i][1]) == 0:
+               
+                if len(array[i][1]) == 0:
                     continue
-               if useLength:
-                    lengths = np.array(array[i][1]).reshape((1,-1))
-                    lengths = sequence.pad_sequences(lengths, maxlen=seq_len, padding='pre', truncating='pre')
-                    lengths = np.array(lengths).reshape((1,-1))
+               
+                if useLength:
+                    lengths = np.array(array[i][1])
+                    lengths = pad_and_truncate(lengths, seq_len)
                     t.append(lengths)
                     
                 if useTime:
-                    times = np.array(array[i][2]).reshape((1,-1))
-                    times = sequence.pad_sequences(times, maxlen=seq_len, padding='pre', truncating='pre',dtype=float)
-                    times = np.array(times).reshape((1,-1))
+                    times = np.array(array[i][2])
+                    times = pad_and_truncate(times, seq_len)
                     t.append(times)
                     
                 if useDirection:
-                    dirs = np.array(array[i][3]).reshape((1,-1))
-                    dirs = sequence.pad_sequences(dirs, maxlen=seq_len, padding='pre', truncating='pre')
-                    dirs = np.array(dirs).reshape((1,-1))
+                    dirs = np.array(array[i][3])
+                    dirs = pad_and_truncate(dirs, seq_len)
                     t.append(dirs)
                     
                 if useTcp:
-                    tcp = np.array(array[i][4]).reshape((1,-1))
-                    tcp = sequence.pad_sequences(tcp, maxlen=seq_len, padding='pre', truncating='pre')
-                    tcp = np.array(tcp).reshape((1,-1))
+                    tcp = np.array(array[i][4])
+                    tcp = pad_and_truncate(tcp, seq_len)
                     t.append(tcp)
                 
                 if useQuic:
-                    quic = np.array(array[i][5]).reshape((1,-1))
-                    quic = sequence.pad_sequences(quic, maxlen=seq_len, padding='pre', truncating='pre')
-                    quic = np.array(quic).reshape((1,-1))
+                    quic = np.array(array[i][5])
+                    quic = pad_and_truncate(quic, seq_len)
                     t.append(quic)
                 
                 if useBurst:
-                    burst = np.array(array[i][6]).reshape((1,-1))
-                    burst = sequence.pad_sequences(burst, maxlen=seq_len, padding='pre', truncating='pre')
-                    burst = np.array(burst).reshape((1,-1))
+                    burst = np.array(array[i][6])
+                    burst = pad_and_truncate(burst, seq_len)
                     t.append(burst)
                 
                 c = np.column_stack(t)

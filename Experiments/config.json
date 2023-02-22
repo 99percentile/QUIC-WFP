@@ -8,6 +8,6 @@
 	"useTcp": true,
 	"useQuic": true,
 	"useBurst": true,
-	"closed_world_dir": "../Data_Processing/closedworld_data/",
+	"closed_world_dir": "../Data_Processing/model1_data/",
 	"open_world_dir": "../Data_Processing/openworld_data/"
 }

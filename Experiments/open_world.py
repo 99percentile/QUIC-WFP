@@ -8,6 +8,7 @@ import gc
 import json
 from tensorflow.keras.callbacks import EarlyStopping
 import numpy as np
+from read_data import get_data
 
 with open('config.json', 'rb') as j:
      config = json.loads(j.read())
@@ -23,7 +24,7 @@ useQuic = config['useQuic']
 useBurst = config['useBurst']
 closed_world_dir = config['closed_world_dir']
 open_world_dir = config['open_world_dir']
-
+modelname = config['modelname']
 
 # reading open-world data
 with open(open_world_dir+'1-10k.pickle', 'rb') as fh:
@@ -81,17 +82,36 @@ for i in range(len(array)):
 X = np.array(X)
 y = np.array(y)
 
-X_open, y_open = X, y
+num_features = sum([useTime,useLength,useDirection, useTcp, useQuic, useBurst])
+X = X.reshape((-1, num_features, seq_len))
+X = X.reshape((-1, num_features*seq_len)).reshape((-1, seq_len, num_features), order='F')
+
+X_train, y_train, X_test, y_test = get_data(closed_world_dir, seq_len=seq_len, num_domains=num_domains,
+                                                num_traces = num_traces, test_size = 0.1, useLength=useLength,
+                                                useTime=useTime, useDirection=useDirection,
+                                                useTcp=useTcp, useQuic=useQuic, useBurst=useBurst)
+
+
+y_test = np.argmax(y_test, axis=1)
+X_open, y_open = np.append(X_test, X, axis=0), np.append(y_test, y, axis=0)
 
 del X
 del y
 
+X_open = X_open.reshape((-1, seq_len*num_features))
+y_open = y_open.reshape((-1, 1))
+a = np.hstack((X_open, y_open))
+np.random.shuffle(a)
+X_open = a[:,:-1]
+y_open = a[:,-1]
+X_open = X_open.reshape((-1, seq_len, num_features))
+
 # choosing model to use
 from tensorflow import keras
 
-lstm = keras.models.load_model('Models/allmodel1')
-df = keras.models.load_model('Models/dfmodel1')
-varcnn = keras.models.load_model('Models/varcnnmodel1')
+lstm = keras.models.load_model('Models/all'+modelname)
+df = keras.models.load_model('Models/df'+modelname)
+varcnn = keras.models.load_model('Models/varcnn'+modelname)
 models = [[lstm, 'all'], [df, 'df'], [varcnn, 'varcnn']]
 
 def get_confusion(proba, y_test, threshold=0.99):
@@ -160,68 +180,93 @@ a = list(reversed(1-np.logspace(-3,0,100, endpoint=True)))[:57]
 thresholds.extend(a)
 a = list(reversed(1-np.logspace(-5,-3,10)))
 thresholds.extend(a)
+a = list(reversed(1-np.logspace(-10,-5,50)))
+thresholds.extend(a)
 thresholds.sort()
 
 r = 10
-newX = []
-newy = []
 numTraces = (r+1) * num_domains
 
-for x, y in zip(X_open, y_open):
-    if y in newy:
-        continue
-    if y < num_domains:
-        newX.append(x)
-        newy.append(y)
-
-count = []
-for x, y in zip(X_open, y_open):
-    if y in count:
-        continue
-    if y >= num_domains and y < numTraces:
-        newX.append(x)
-        newy.append(-1)
-        count.append(y)
-
-newX = np.array(newX)
-newy = np.array(newy)
-
-num_features = sum([useTime,useLength,useDirection, useTcp, useQuic, useBurst])
-newX = newX.reshape((-1, num_features, seq_len))
-newX = newX.reshape((-1, num_features*seq_len)).reshape((-1, seq_len, num_features), order='F')
+precisions = {}
+tprs = {}
+wprs = {}
+fprs = {}
 
 for model, name in models:
-    print(name)
-    if name == 'all':
-        proba = model.predict([newX[:,:,:-1], newX[:,:,-1]])
-    
-    if name == 'varcnn':
-        proba = model.predict([newX[:,:,1], newX[:,:,2]])
-    
-    if name == 'df':
-        proba = model.predict(newX[:,:,2])
-    
-    precisions = []
-    tprs = []
-    wprs = []
-    fprs = []
-    
-    for threshold in thresholds:
-        for r in Rvalues:
-            tpr, wpr, fpr, cal = rprecision(get_confusion(proba, newy, threshold), r)
-            precisions.append(cal)
-            tprs.append(tpr)
-            wprs.append(wpr)
-            fprs.append(fpr)
-    
-    
-    #print('tprs=', tprs)
-    #print('wprs=', wprs)
-    #print('fprs=', fprs)
-    #print('precisions=', precisions)
-    
-    np.save('Results/tprsopenmodel1'+name+'.npy', tprs)
-    np.save('Results/wprsopenmodel1'+name+'.npy', wprs)
-    np.save('Results/fprsopenmodel1'+name+'.npy', fprs)
-    np.save('Results/precisionsopenmodel1'+name+'.npy', precisions)
+    precisions[name] = []
+    tprs[name] = []
+    wprs[name] = []
+    fprs[name] = []
 
+for i in range(20):
+    print('round ' + str(i))
+    X_open = X_open.reshape((-1, seq_len*num_features))
+    y_open = y_open.reshape((-1, 1))
+    a = np.hstack((X_open, y_open))
+    np.random.shuffle(a)
+    X_open = a[:,:-1]
+    y_open = a[:,-1]
+    X_open = X_open.reshape((-1, seq_len, num_features))
+    
+    newX = []
+    newy = []
+    for x, y in zip(X_open, y_open):
+        if y in newy:
+            continue
+        if y < num_domains:
+            newX.append(x)
+            newy.append(y)
+
+    count = []
+    for x, y in zip(X_open, y_open):
+        if y in count:
+            continue
+        if y >= num_domains and y < numTraces:
+            newX.append(x)
+            newy.append(-1)
+            count.append(y)
+
+    newX = np.array(newX)
+    newy = np.array(newy)
+
+    for model, name in models:
+        print(name)
+        if name == 'all':
+            proba = model.predict([newX[:,:,:-1], newX[:,:,-1]])
+        
+        if name == 'varcnn':
+            proba = model.predict([newX[:,:,1], newX[:,:,2]])
+        
+        if name == 'df':
+            proba = model.predict(newX[:,:,2])
+        
+        for threshold in thresholds:
+            for r in Rvalues:
+                tpr, wpr, fpr, cal = rprecision(get_confusion(proba, newy, threshold), r)
+                precisions[name].append(cal)
+                tprs[name].append(tpr)
+                wprs[name].append(wpr)
+                fprs[name].append(fpr)
+        
+        
+        #print('tprs=', tprs)
+        #print('wprs=', wprs)
+        #print('fprs=', fprs)
+        #print('precisions=', precisions)
+        
+        #np.save('Results/tprsopen'+modelname+name+'.npy', tprs)
+        #np.save('Results/wprsopen'+modelname+name+'.npy', wprs)
+        #np.save('Results/fprsopen'+modelname+name+'.npy', fprs)
+        #np.save('Results/precisionsopen'+modelname+name+'.npy', precisions)
+
+with open('Results/precisions'+modelname+'.pickle', 'wb') as handle:
+    pickle.dump(precisions, handle)
+
+with open('Results/tprs'+modelname+'.pickle', 'wb') as handle:
+    pickle.dump(tprs, handle)
+
+with open('Results/fprs'+modelname+'.pickle', 'wb') as handle:
+    pickle.dump(fprs, handle)
+
+with open('Results/wprs'+modelname+'.pickle', 'wb') as handle:
+    pickle.dump(wprs, handle)
